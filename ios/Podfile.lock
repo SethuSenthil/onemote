@@ -1,0 +1,41 @@
+PODS:
+  - Flutter (1.0.0)
+  - fluttertoast (0.0.2):
+    - Flutter
+    - Toast
+  - shared_preferences (0.0.1):
+    - Flutter
+  - Toast (4.0.0)
+  - vibrate (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
+  - shared_preferences (from `.symlinks/plugins/shared_preferences/ios`)
+  - vibrate (from `.symlinks/plugins/vibrate/ios`)
+
+SPEC REPOS:
+  trunk:
+    - Toast
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  fluttertoast:
+    :path: ".symlinks/plugins/fluttertoast/ios"
+  shared_preferences:
+    :path: ".symlinks/plugins/shared_preferences/ios"
+  vibrate:
+    :path: ".symlinks/plugins/vibrate/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 434fef37c0980e73bb6479ef766c45957d4b510c
+  fluttertoast: 28246c4aced3b2015075b22d8e9fbec5762e20ab
+  shared_preferences: 5d0fc5691f4e7293ddfc1b599ca398f8af42f5e7
+  Toast: 91b396c56ee72a5790816f40d3a94dd357abc196
+  vibrate: 60f70936fa28c66a0ec1ac9ce4a66768833fbfaf
+
+PODFILE CHECKSUM: a75497545d4391e2d394c3668e20cfb1c2bbd4aa
+
+COCOAPODS: 1.10.1

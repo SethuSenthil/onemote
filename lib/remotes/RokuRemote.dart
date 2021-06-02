@@ -358,13 +358,6 @@ class _RokuRemoteState extends State<RokuRemote> {
                             List localList = _recordedActions;
                             _recordedActions = [];
 
-                            var json = jsonEncode({
-                              "name": "shortcutname",
-                              "deviceType": "Roku",
-                              "createdOn": "deviceID",
-                              "actions": localList
-                            });
-
                             showDialog(
                                 context: context,
                                 barrierDismissible: false,
@@ -404,6 +397,7 @@ class _RokuRemoteState extends State<RokuRemote> {
                                             style:
                                                 TextStyle(color: Colors.white)),
                                         onPressed: () async {
+                                          print('saving...');
                                           final prefs = await SharedPreferences
                                               .getInstance();
 
@@ -418,15 +412,20 @@ class _RokuRemoteState extends State<RokuRemote> {
                                                 jsonDecode(existingIndex);
                                           }
 
+                                          var shoutcutData = {
+                                            "name": _shortcutName,
+                                            "deviceType": "Roku",
+                                            "createdOn": "deviceID",
+                                            "actions": localList
+                                          };
+
                                           parsedExistingIndex['shortcuts']
-                                              .add('shortcutname');
+                                              .add(jsonEncode(shoutcutData));
 
                                           prefs.setString('shortcutsIndex',
                                               jsonEncode(parsedExistingIndex));
 
-                                          prefs.setString(
-                                              'shortcut-' + _shortcutName,
-                                              json);
+                                          Navigator.pop(context);
                                         },
                                       ),
                                     ],

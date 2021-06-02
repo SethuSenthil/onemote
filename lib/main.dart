@@ -64,8 +64,15 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _dropDownActive = false;
 
   //get index then get indi shortcut through futurebuilder
-  var _shortcutMap = jsonDecode(
-      '{"shortcuts": [{"name": "shortcut 1", "deviceType": "Roku", "createdOn": "MasterTV","actions": ["right", "left", "right"]},{"name": "shortcut 2", "deviceType": "Roku", "createdOn": "MasterTV", "actions": ["right", "left", "right"]}]}');
+
+  Future<String> getShortcutIndex() async {
+    final prefs = await SharedPreferences.getInstance();
+    String index = prefs.getString('shortcutsIndex');
+    return index;
+  }
+
+  //var _shortcutMap = jsonDecode(
+  //'{"shortcuts": [{"name": "shortcut 1", "deviceType": "Roku", "createdOn": "MasterTV","actions": ["right", "left", "right"]},{"name": "shortcut 2", "deviceType": "Roku", "createdOn": "MasterTV", "actions": ["right", "left", "right"]}]}');
 
   List filterDevices(String deviceType) {
     List filteredList = [];
@@ -124,21 +131,11 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void getShortcutData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String shortcutJSON = prefs.getString('SHORTCUTS');
-    if (shortcutJSON == null) prefs.setString('SHORTCUTS', '{"shortcuts": []}');
-
-    _shortcutMap = jsonDecode(shortcutJSON);
-
-    print(shortcutJSON);
-  }
-
   @override
   void initState() {
     super.initState();
     scan();
-    //getShortcutData();
+    //getgetShortcutDataata();
   }
 
   void _onItemTapped(int index) {
@@ -223,226 +220,235 @@ class _MyHomePageState extends State<MyHomePage> {
           Visibility(
               visible: _selectedIndex == 1 ? true : false,
               child: Expanded(
-                  child: ListView.builder(
-                      padding: const EdgeInsets.all(8),
-                      itemCount: _shortcutMap['shortcuts'].length,
-                      itemBuilder: (BuildContext context, int index) {
-                        List supportedShortcutDevices = filterDevices(
-                            _shortcutMap['shortcuts'][index]['deviceType']);
-                        var shorty = ViewShortcut(
-                            device: _shortcutMap['shortcuts'][index]
-                                ['deviceType'],
-                            name: _shortcutMap['shortcuts'][index]['name'],
-                            actions: _shortcutMap['shortcuts'][index]
-                                ['actions'],
-                            selectDevice: AlertDialog(
-                              title: Text(
-                                  "Select a ${_shortcutMap['shortcuts'][index]['deviceType']} Device to Run '${_shortcutMap['shortcuts'][index]['name']}'"),
-                              content: Container(
-                                  width: 80,
-                                  child: ListView.builder(
-                                      itemCount:
-                                          supportedShortcutDevices.length,
-                                      itemBuilder:
-                                          (BuildContext context, int index) {
-                                        return InkWell(
-                                            onTap: () => {
-                                                  () async {
-                                                    Navigator.of(context).pop();
-                                                    await supportedShortcutDevices[
-                                                                index]
-                                                            ['deviceInstance']
-                                                        .powerOn();
-                                                    await supportedShortcutDevices[
-                                                                index]
-                                                            ['deviceInstance']
-                                                        .home();
-                                                    _shortcutMap['shortcuts']
-                                                            [index]['actions']
-                                                        .forEach((action) => {
-                                                              () async {
-                                                                supportedShortcutDevices[
-                                                                            index]
-                                                                        [
-                                                                        'deviceInstance']
-                                                                    .run(
-                                                                        action);
-                                                              }()
-                                                            });
+                  child: FutureBuilder<String>(
+                      future: getShortcutIndex(),
+                      builder: (BuildContext context,
+                          AsyncSnapshot<String> snapshot) {
+                        if (snapshot.hasData) {
+                          var shortcuts = jsonDecode(snapshot.data);
+                          print('shortcutindexLength ' +
+                              shortcuts['shortcuts'].length.toString());
+                          return ListView.builder(
+                              padding: const EdgeInsets.all(8),
+                              itemCount: shortcuts['shortcuts'].length,
+                              itemBuilder: (BuildContext context, int index) {
+                                print(snapshot.data);
+                                var thisShortcut =
+                                    jsonDecode(shortcuts['shortcuts'][index]);
+                                List supportedShortcutDevices =
+                                    filterDevices(thisShortcut['deviceType']);
+                                var shorty = ViewShortcut(
+                                    device: thisShortcut['deviceType'],
+                                    name: thisShortcut['name'],
+                                    actions: thisShortcut['actions'],
+                                    selectDevice: AlertDialog(
+                                      title: Text(
+                                          "Select a ${thisShortcut['deviceType']} Device to Run '${thisShortcut['name']}'"),
+                                      content: Container(
+                                          width: 80,
+                                          child: ListView.builder(
+                                              itemCount:
+                                                  supportedShortcutDevices
+                                                      .length,
+                                              itemBuilder:
+                                                  (BuildContext context,
+                                                      int index) {
+                                                return InkWell(
+                                                    onTap: () => {
+                                                          () async {
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop();
+                                                            await supportedShortcutDevices[
+                                                                        index][
+                                                                    'deviceInstance']
+                                                                .powerOn();
+                                                            await supportedShortcutDevices[
+                                                                        index][
+                                                                    'deviceInstance']
+                                                                .home();
+                                                            thisShortcut[
+                                                                    'actions']
+                                                                .forEach(
+                                                                    (action) =>
+                                                                        {
+                                                                          () async {
+                                                                            supportedShortcutDevices[index]['deviceInstance'].run(action);
+                                                                          }()
+                                                                        });
 
-                                                    Fluttertoast.showToast(
-                                                      msg:
-                                                          "Sucessfully ran '${_shortcutMap['shortcuts'][index]['name']}",
-                                                      toastLength:
-                                                          Toast.LENGTH_SHORT,
-                                                      gravity:
-                                                          ToastGravity.BOTTOM,
-                                                      timeInSecForIosWeb: 2,
-                                                    );
-                                                  }()
-                                                },
-                                            child: Card(
-                                              child: ListTile(
-                                                leading:
-                                                    supportedShortcutDevices[
-                                                        index]['icon'],
-                                                title: Text(
-                                                    supportedShortcutDevices[
-                                                            index]['device']
-                                                        .friendlyName),
-                                                subtitle: Text('TCL TV'),
-                                              ),
-                                            ));
-                                      })),
-                              actions: <Widget>[
-                                TextButton(
-                                  child: Text('Cancel',
-                                      style: TextStyle(color: Colors.red)),
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                ),
-                              ],
-                            ));
-                        return Card(
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10.0)),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                  gradient: LinearGradient(colors: [
-                                    Color(0xff6f1ab1),
-                                    Colors.black87
-                                  ])),
-                              child: InkWell(
-                                  onTap: () => {
-                                        if (!_shortcutInProg)
-                                          {
-                                            showDialog<void>(
-                                              context: context,
-                                              barrierDismissible: true,
-                                              builder: (BuildContext context) {
-                                                return AlertDialog(
-                                                  title: Text(
-                                                      "Select a ${_shortcutMap['shortcuts'][index]['deviceType']} Device to Run '${_shortcutMap['shortcuts'][index]['name']}'"),
-                                                  content: Container(
-                                                      width: 80,
-                                                      child: ListView.builder(
-                                                          itemCount:
-                                                              supportedShortcutDevices
-                                                                  .length,
-                                                          itemBuilder:
-                                                              (BuildContext
-                                                                      context,
-                                                                  int index) {
-                                                            return InkWell(
-                                                                onTap: () => {
-                                                                      () async {
-                                                                        setState(
-                                                                            () {
-                                                                          _shortcutInProg =
-                                                                              true;
-                                                                        });
-                                                                        Navigator.of(context)
-                                                                            .pop();
-                                                                        await supportedShortcutDevices[index]['deviceInstance']
-                                                                            .powerOn();
-                                                                        await supportedShortcutDevices[index]['deviceInstance']
-                                                                            .home();
-                                                                        _shortcutMap['shortcuts'][index]['actions'].forEach((action) =>
-                                                                            {
-                                                                              () async {
-                                                                                supportedShortcutDevices[index]['deviceInstance'].run(action);
-                                                                              }()
-                                                                            });
-                                                                        setState(
-                                                                            () {
-                                                                          _shortcutInProg =
-                                                                              false;
-                                                                        });
-                                                                        Fluttertoast
-                                                                            .showToast(
-                                                                          msg:
-                                                                              "Sucessfully ran '${_shortcutMap['shortcuts'][index]['name']}",
-                                                                          toastLength:
-                                                                              Toast.LENGTH_SHORT,
-                                                                          gravity:
-                                                                              ToastGravity.BOTTOM,
-                                                                          timeInSecForIosWeb:
-                                                                              2,
-                                                                        );
-                                                                      }()
-                                                                    },
-                                                                child: Card(
-                                                                  child:
-                                                                      ListTile(
-                                                                    leading: supportedShortcutDevices[
-                                                                            index]
-                                                                        [
-                                                                        'icon'],
-                                                                    title: Text(supportedShortcutDevices[index]
-                                                                            [
-                                                                            'device']
-                                                                        .friendlyName),
-                                                                    subtitle: Text(
-                                                                        'TCL TV'),
-                                                                  ),
-                                                                ));
-                                                          })),
-                                                  actions: <Widget>[
-                                                    TextButton(
-                                                      child: Text('Cancel',
-                                                          style: TextStyle(
-                                                              color:
-                                                                  Colors.red)),
-                                                      onPressed: () {
-                                                        Navigator.of(context)
-                                                            .pop();
-                                                      },
-                                                    ),
-                                                    TextButton(
-                                                      child: Text(
-                                                        'View Actions',
+                                                            Fluttertoast
+                                                                .showToast(
+                                                              msg:
+                                                                  "Sucessfully ran '${thisShortcut['name']}",
+                                                              toastLength: Toast
+                                                                  .LENGTH_SHORT,
+                                                              gravity:
+                                                                  ToastGravity
+                                                                      .BOTTOM,
+                                                              timeInSecForIosWeb:
+                                                                  2,
+                                                            );
+                                                          }()
+                                                        },
+                                                    child: Card(
+                                                      child: ListTile(
+                                                        leading:
+                                                            supportedShortcutDevices[
+                                                                index]['icon'],
+                                                        title: Text(
+                                                            supportedShortcutDevices[
+                                                                        index]
+                                                                    ['device']
+                                                                .friendlyName),
+                                                        subtitle:
+                                                            Text('TCL TV'),
                                                       ),
-                                                      onPressed: () {
-                                                        Navigator.push(
-                                                          context,
-                                                          MaterialPageRoute(
-                                                              builder:
-                                                                  (context) =>
-                                                                      shorty),
+                                                    ));
+                                              })),
+                                      actions: <Widget>[
+                                        TextButton(
+                                          child: Text('Cancel',
+                                              style:
+                                                  TextStyle(color: Colors.red)),
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                        ),
+                                      ],
+                                    ));
+                                return Card(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10.0)),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(10.0),
+                                          gradient: LinearGradient(colors: [
+                                            Color(0xff6f1ab1),
+                                            Colors.black87
+                                          ])),
+                                      child: InkWell(
+                                          onTap: () => {
+                                                if (!_shortcutInProg)
+                                                  {
+                                                    showDialog<void>(
+                                                      context: context,
+                                                      barrierDismissible: true,
+                                                      builder: (BuildContext
+                                                          context) {
+                                                        return AlertDialog(
+                                                          title: Text(
+                                                              "Select a ${thisShortcut['deviceType']} Device to Run '${thisShortcut['name']}'"),
+                                                          content: Container(
+                                                              width: 80,
+                                                              child: ListView
+                                                                  .builder(
+                                                                      itemCount:
+                                                                          supportedShortcutDevices
+                                                                              .length,
+                                                                      itemBuilder:
+                                                                          (BuildContext context,
+                                                                              int index) {
+                                                                        return InkWell(
+                                                                            onTap: () =>
+                                                                                {
+                                                                                  () async {
+                                                                                    setState(() {
+                                                                                      _shortcutInProg = true;
+                                                                                    });
+                                                                                    Navigator.of(context).pop();
+                                                                                    await supportedShortcutDevices[index]['deviceInstance'].powerOn();
+                                                                                    await supportedShortcutDevices[index]['deviceInstance'].home();
+                                                                                    thisShortcut['actions'].forEach((action) => {
+                                                                                          () async {
+                                                                                            supportedShortcutDevices[index]['deviceInstance'].run(action);
+                                                                                          }()
+                                                                                        });
+                                                                                    setState(() {
+                                                                                      _shortcutInProg = false;
+                                                                                    });
+                                                                                    Fluttertoast.showToast(
+                                                                                      msg: "Sucessfully ran '${supportedShortcutDevices[index]['name']}",
+                                                                                      toastLength: Toast.LENGTH_SHORT,
+                                                                                      gravity: ToastGravity.BOTTOM,
+                                                                                      timeInSecForIosWeb: 2,
+                                                                                    );
+                                                                                  }()
+                                                                                },
+                                                                            child:
+                                                                                Card(
+                                                                              child: ListTile(
+                                                                                leading: supportedShortcutDevices[index]['icon'],
+                                                                                title: Text(supportedShortcutDevices[index]['device'].friendlyName),
+                                                                                subtitle: Text('TCL TV'),
+                                                                              ),
+                                                                            ));
+                                                                      })),
+                                                          actions: <Widget>[
+                                                            TextButton(
+                                                              child: Text(
+                                                                  'Cancel',
+                                                                  style: TextStyle(
+                                                                      color: Colors
+                                                                          .red)),
+                                                              onPressed: () {
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop();
+                                                              },
+                                                            ),
+                                                            TextButton(
+                                                              child: Text(
+                                                                'View Actions',
+                                                              ),
+                                                              onPressed: () {
+                                                                Navigator.push(
+                                                                  context,
+                                                                  MaterialPageRoute(
+                                                                      builder:
+                                                                          (context) =>
+                                                                              shorty),
+                                                                );
+                                                              },
+                                                            ),
+                                                          ],
                                                         );
                                                       },
-                                                    ),
-                                                  ],
+                                                    )
+                                                  }
+                                              },
+                                          child: ListTile(
+                                            leading: Icon(
+                                                Icons.play_arrow_rounded,
+                                                color: Colors.white),
+                                            title: Text(thisShortcut['name'],
+                                                style: TextStyle(
+                                                    color: Colors.white)),
+                                            subtitle: Text(
+                                                "${thisShortcut['actions'].length} actions • ${thisShortcut['deviceType']}",
+                                                style: TextStyle(
+                                                    color: Colors.white)),
+                                            trailing: IconButton(
+                                              icon: Icon(Icons.arrow_right_alt,
+                                                  color: Colors.white),
+                                              onPressed: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          shorty),
                                                 );
                                               },
-                                            )
-                                          }
-                                      },
-                                  child: ListTile(
-                                    leading: Icon(Icons.play_arrow_rounded,
-                                        color: Colors.white),
-                                    title: Text(
-                                        _shortcutMap['shortcuts'][index]
-                                            ['name'],
-                                        style: TextStyle(color: Colors.white)),
-                                    subtitle: Text(
-                                        "${_shortcutMap['shortcuts'][index]['actions'].length} actions • ${_shortcutMap['shortcuts'][index]['deviceType']}",
-                                        style: TextStyle(color: Colors.white)),
-                                    trailing: IconButton(
-                                      icon: Icon(Icons.arrow_right_alt,
-                                          color: Colors.white),
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (context) => shorty),
-                                        );
-                                      },
-                                    ),
-                                  )),
-                            ));
+                                            ),
+                                          )),
+                                    ));
+                              });
+                        } else {
+                          return Center(
+                              child: Text('No shortcuts created yet'));
+                        }
                       }))),
         ],
       )),

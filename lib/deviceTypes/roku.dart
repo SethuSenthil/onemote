@@ -127,7 +127,12 @@ class Roku {
     await post(uriPath('keypress/Pause'));
   }
 
-  void run(String methodName, {String appID = '', bool hapticFeedback}) {
+  void type(String typeString) async {
+    await post(uriPath('keypress/LIT_' + typeString));
+  }
+
+  void run(String methodName,
+      {String appID = '', bool hapticFeedback, String typeString = ''}) {
     if (hapticFeedback == null) {
       hapticFeedback = Platform.isIOS;
     }
@@ -183,6 +188,8 @@ class Roku {
         return play();
       case 'pause':
         return pause();
+      case 'type':
+        return type(typeString);
     }
   }
 

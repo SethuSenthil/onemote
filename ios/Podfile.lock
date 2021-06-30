@@ -31,8 +31,8 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: 434fef37c0980e73bb6479ef766c45957d4b510c
-  fluttertoast: 28246c4aced3b2015075b22d8e9fbec5762e20ab
-  shared_preferences: 5d0fc5691f4e7293ddfc1b599ca398f8af42f5e7
+  fluttertoast: 6122fa75143e992b1d3470f61000f591a798cc58
+  shared_preferences: af6bfa751691cdc24be3045c43ec037377ada40d
   Toast: 91b396c56ee72a5790816f40d3a94dd357abc196
   vibrate: 60f70936fa28c66a0ec1ac9ce4a66768833fbfaf
 

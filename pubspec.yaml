@@ -23,13 +23,13 @@ environment:
 dependencies:
   upnp:
    git: https://github.com/SethuSenthil/upnp.dart.git
-  font_awesome_flutter: ^9.0.0
-  simple_icons: ^4.21.0
+  font_awesome_flutter: ^9.1.0
+  simple_icons: ^5.2.0
   flutter_svg: ^0.22.0
   vibrate: ^0.0.4
   http: ^0.13.3
-  shared_preferences: ^2.0.5
-  fluttertoast: ^8.0.6
+  shared_preferences: ^2.0.6
+  fluttertoast: ^8.0.7
   flutter:
     sdk: flutter
 

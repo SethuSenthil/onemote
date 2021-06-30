@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:onemote/deviceTypes/roku.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +24,83 @@ class _RokuRemoteState extends State<RokuRemote> {
   final buttonColor = Color(0xff2A2431);
 
   final remoteControlKey = GlobalKey();
+
+  void saveShortcutRecording() {
+    print("parsing recording actions");
+
+    setState(() {
+      _isRecording = false;
+    });
+
+    //finished recording session
+
+    //copy data locally and reset global list
+    List localList = _recordedActions;
+    _recordedActions = [];
+
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('Name Your Shourtcut'),
+            content: TextField(
+              onChanged: (value) {
+                setState(() {
+                  _shortcutName = value;
+                });
+              },
+              decoration: InputDecoration(hintText: "My Shortcut 1"),
+            ),
+            actions: <Widget>[
+              TextButton(
+                style: ButtonStyle(
+                    backgroundColor: MaterialStateProperty.all(Colors.red)),
+                child: Text('Discard', style: TextStyle(color: Colors.white)),
+                onPressed: () {
+                  setState(() {
+                    Navigator.pop(context);
+                  });
+                },
+              ),
+              TextButton(
+                style: ButtonStyle(
+                    backgroundColor:
+                        MaterialStateProperty.all(Color(0xff662D91))),
+                child: Text('Save', style: TextStyle(color: Colors.white)),
+                onPressed: () async {
+                  print('saving...');
+                  final prefs = await SharedPreferences.getInstance();
+
+                  String existingIndex = prefs.getString('shortcutsIndex');
+
+                  var parsedExistingIndex =
+                      jsonDecode(jsonEncode({"shortcuts": []}));
+
+                  if (existingIndex != null) {
+                    parsedExistingIndex = jsonDecode(existingIndex);
+                  }
+
+                  var shoutcutData = {
+                    "name": _shortcutName,
+                    "deviceType": "Roku",
+                    "createdOn": "deviceID",
+                    "actions": localList
+                  };
+
+                  parsedExistingIndex['shortcuts']
+                      .add(jsonEncode(shoutcutData));
+
+                  prefs.setString(
+                      'shortcutsIndex', jsonEncode(parsedExistingIndex));
+
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          );
+        });
+  }
 
   Widget makeTopButton(IconData icon, Function function) {
     return ElevatedButton(
@@ -55,32 +133,59 @@ class _RokuRemoteState extends State<RokuRemote> {
   }
 
   Widget makeTabBar(IconData icon, String label, bool isSelected,
-      {Color background, Function onTap}) {
-    return InkWell(
-        onTap: onTap,
-        child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          Container(
-              margin: EdgeInsets.only(bottom: 5),
-              decoration: BoxDecoration(
-                  color: background == null
-                      ? isSelected
-                          ? Color(0xffFEFFFE)
-                          : Color(0xff414041)
-                      : background,
-                  borderRadius: BorderRadius.all(Radius.circular(25))),
-              child: IconButton(
-                  padding: EdgeInsets.fromLTRB(background == null ? 5 : 20, 5,
-                      background == null ? 5 : 20, 5),
-                  icon: Icon(icon, size: 20),
-                  onPressed: onTap,
-                  color: isSelected ? Colors.black : Colors.white)),
-          Text(label, style: TextStyle(color: Color(0xff6F6E6F)))
-        ]));
+      {Color background, Function onTap, bool blinking = false}) {
+    if (!blinking) {
+      return InkWell(
+          onTap: onTap,
+          child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            Container(
+                margin: EdgeInsets.only(bottom: 5),
+                decoration: BoxDecoration(
+                    color: background == null
+                        ? isSelected
+                            ? Color(0xffFEFFFE)
+                            : Color(0xff414041)
+                        : background,
+                    borderRadius: BorderRadius.all(Radius.circular(25))),
+                child: IconButton(
+                    padding: EdgeInsets.fromLTRB(background == null ? 5 : 20, 5,
+                        background == null ? 5 : 20, 5),
+                    icon: Icon(icon, size: 20),
+                    onPressed: onTap,
+                    color: isSelected ? Colors.black : Colors.white)),
+            Text(label, style: TextStyle(color: Color(0xff6F6E6F)))
+          ]));
+    } else {
+      return InkWell(
+          onTap: onTap,
+          child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            Container(
+                margin: EdgeInsets.only(bottom: 5),
+                decoration: BoxDecoration(
+                    color: background == null
+                        ? isSelected
+                            ? Color(0xffFEFFFE)
+                            : Color(0xff414041)
+                        : background,
+                    borderRadius: BorderRadius.all(Radius.circular(25))),
+                child: IconButton(
+                    padding: EdgeInsets.fromLTRB(background == null ? 5 : 20, 5,
+                        background == null ? 5 : 20, 5),
+                    icon: BlinkingWidget(Icon(icon, size: 20)),
+                    onPressed: onTap,
+                    color: isSelected ? Colors.black : Colors.white)),
+            Text(label, style: TextStyle(color: Color(0xff6F6E6F)))
+          ]));
+    }
   }
 
-  void coreClick(String methodName) {
+  void coreClick(String methodName,
+      {String appID = '',
+      bool hapticFeedback = false,
+      String typeString = ''}) {
     //TODO: Add support for params using contatnated flags in methodName
-    widget.roku.run(methodName);
+    widget.roku.run(methodName,
+        appID: appID, hapticFeedback: hapticFeedback, typeString: typeString);
     if (_isRecording) {
       _recordedActions.add(methodName);
     }
@@ -95,48 +200,100 @@ class _RokuRemoteState extends State<RokuRemote> {
             leading: IconButton(
               icon: Icon(Icons.close_rounded),
               onPressed: () {
-                showDialog<void>(
-                  context: context,
-                  barrierDismissible: false, // user must tap button!
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text('Power Off "${widget.name}"? '),
-                      content: SingleChildScrollView(
-                        child: ListBody(
-                          children: <Widget>[
-                            Text('Would you like to turn off this device?'),
-                          ],
+                if (_isRecording) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false, // user must tap button!
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title:
+                            Text('Power Off and Cancel Recording Shortcut? '),
+                        content: SingleChildScrollView(
+                          child: ListBody(
+                            children: <Widget>[
+                              Text(
+                                  'It looks like you are in the middle of recording a shortcut, would you like to continue recording, end the recording or cancel the recording and power off the device'),
+                            ],
+                          ),
                         ),
-                      ),
-                      actions: <Widget>[
-                        TextButton(
-                          child: Text('Power Off',
-                              style: TextStyle(color: Colors.red)),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).pop();
-                            widget.roku.powerOff();
-                          },
+                        actions: <Widget>[
+                          TextButton(
+                            child: Text('Cancel Recording and Power Off',
+                                style: TextStyle(color: Colors.red)),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Navigator.of(context).pop();
+                              widget.roku.powerOff();
+                            },
+                          ),
+                          TextButton(
+                            child: Text('Stop and Save Shortcut Recording',
+                                style: TextStyle(color: Colors.yellow)),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              saveShortcutRecording();
+                            },
+                          ),
+                          TextButton(
+                            child: Text('Continue Recording'),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                } else {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false, // user must tap button!
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text('Power Off "${widget.name}"? '),
+                        content: SingleChildScrollView(
+                          child: ListBody(
+                            children: <Widget>[
+                              Text('Would you like to turn off this device?'),
+                            ],
+                          ),
                         ),
-                        TextButton(
-                          child: Text('Keep Running'),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                );
+                        actions: <Widget>[
+                          TextButton(
+                            child: Text('Power Off',
+                                style: TextStyle(color: Colors.red)),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Navigator.of(context).pop();
+                              widget.roku.powerOff();
+                            },
+                          ),
+                          TextButton(
+                            child: Text('Keep Running'),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }
               },
             ),
             actions: [
               Padding(
                   padding: EdgeInsets.only(right: 20),
-                  child: Icon(
-                    Icons.power_settings_new_rounded,
-                    color: Colors.red,
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.power_settings_new_rounded,
+                      color: Colors.red,
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      widget.roku.powerOff();
+                    },
                   ))
             ]),
         body: Container(
@@ -154,7 +311,73 @@ class _RokuRemoteState extends State<RokuRemote> {
                         IconButton(
                             icon: Icon(Icons.keyboard_rounded,
                                 size: 30, color: iconColor),
-                            onPressed: () {}),
+                            onPressed: () {
+                              var inputController = TextEditingController();
+                              inputController.text = ' ';
+
+                              showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      title: Text('Type Here'),
+                                      content: TextField(
+                                        controller: inputController,
+                                        autofocus: true,
+                                        onChanged: (value) async {
+                                          if (value.length > 0) {
+                                            coreClick('type',
+                                                typeString: value.substring(1));
+                                            // await Future.delayed(
+                                            //Duration(seconds: 1);
+
+                                          } else {
+                                            //print('backspace detected');
+                                            coreClick('backspace');
+                                          }
+
+                                          inputController.text = ' ';
+                                          inputController.selection =
+                                              TextSelection(
+                                                  baseOffset: inputController
+                                                      .text.length,
+                                                  extentOffset: inputController
+                                                      .text.length);
+                                        },
+                                        onSubmitted: (value) {
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                      actions: <Widget>[
+                                        Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: <Widget>[
+                                              TextButton.icon(
+                                                style: ButtonStyle(
+                                                    backgroundColor:
+                                                        MaterialStateProperty
+                                                            .all(Color(
+                                                                0xff662D91))),
+                                                onPressed: () async {
+                                                  ClipboardData clipboard =
+                                                      await Clipboard.getData(
+                                                          Clipboard.kTextPlain);
+                                                  coreClick('type',
+                                                      typeString:
+                                                          clipboard.text);
+                                                },
+                                                icon: Icon(Icons.copy_rounded,
+                                                    color: Colors.white),
+                                                label: Text('Paste Clipboard',
+                                                    style: TextStyle(
+                                                        color: Colors.white)),
+                                              ),
+                                            ])
+                                      ],
+                                    );
+                                  });
+                            }),
                         IconButton(
                             icon: Icon(Icons.search_rounded,
                                 size: 30, color: iconColor),
@@ -338,7 +561,8 @@ class _RokuRemoteState extends State<RokuRemote> {
                         makeTabBar(Icons.settings_remote, 'Remote', true,
                             onTap: () {}),
                         makeTabBar(Icons.touch_app, 'Record Actions', false,
-                            background: Colors.red, onTap: () async {
+                            background: Colors.red,
+                            blinking: _isRecording, onTap: () async {
                           print("clicked");
                           if (!_isRecording) {
                             print("started recording actions");
@@ -346,91 +570,7 @@ class _RokuRemoteState extends State<RokuRemote> {
                               _isRecording = true;
                             });
                           } else {
-                            print("parsing recording actions");
-
-                            setState(() {
-                              _isRecording = false;
-                            });
-
-                            //finished recording session
-
-                            //copy data locally and reset global list
-                            List localList = _recordedActions;
-                            _recordedActions = [];
-
-                            showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) {
-                                  return AlertDialog(
-                                    title: Text('Name Your Shourtcut'),
-                                    content: TextField(
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _shortcutName = value;
-                                        });
-                                      },
-                                      decoration: InputDecoration(
-                                          hintText: "My Shortcut 1"),
-                                    ),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        style: ButtonStyle(
-                                            backgroundColor:
-                                                MaterialStateProperty.all(
-                                                    Colors.red)),
-                                        child: Text('Discard',
-                                            style:
-                                                TextStyle(color: Colors.white)),
-                                        onPressed: () {
-                                          setState(() {
-                                            Navigator.pop(context);
-                                          });
-                                        },
-                                      ),
-                                      TextButton(
-                                        style: ButtonStyle(
-                                            backgroundColor:
-                                                MaterialStateProperty.all(
-                                                    Color(0xff662D91))),
-                                        child: Text('Save',
-                                            style:
-                                                TextStyle(color: Colors.white)),
-                                        onPressed: () async {
-                                          print('saving...');
-                                          final prefs = await SharedPreferences
-                                              .getInstance();
-
-                                          String existingIndex =
-                                              prefs.getString('shortcutsIndex');
-
-                                          var parsedExistingIndex = jsonDecode(
-                                              jsonEncode({"shortcuts": []}));
-
-                                          if (existingIndex != null) {
-                                            parsedExistingIndex =
-                                                jsonDecode(existingIndex);
-                                          }
-
-                                          var shoutcutData = {
-                                            "name": _shortcutName,
-                                            "deviceType": "Roku",
-                                            "createdOn": "deviceID",
-                                            "actions": localList
-                                          };
-
-                                          parsedExistingIndex['shortcuts']
-                                              .add(jsonEncode(shoutcutData));
-
-                                          prefs.setString('shortcutsIndex',
-                                              jsonEncode(parsedExistingIndex));
-
-                                          Navigator.pop(context);
-                                        },
-                                      ),
-                                    ],
-                                  );
-                                });
+                            saveShortcutRecording();
                           }
                         }),
                         makeTabBar(Icons.filter_none, 'Channels', false,
@@ -765,5 +905,36 @@ class RPSCustomPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return true;
+  }
+}
+
+class BlinkingWidget extends StatefulWidget {
+  Widget widget;
+  BlinkingWidget(this.widget);
+  @override
+  _BlinkingWidget createState() => _BlinkingWidget();
+}
+
+class _BlinkingWidget extends State<BlinkingWidget>
+    with SingleTickerProviderStateMixin {
+  AnimationController _animationController;
+
+  @override
+  void initState() {
+    _animationController =
+        new AnimationController(vsync: this, duration: Duration(seconds: 1));
+    _animationController.repeat(reverse: true);
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(opacity: _animationController, child: widget.widget);
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 }
